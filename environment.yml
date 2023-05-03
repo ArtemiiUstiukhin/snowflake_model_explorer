@@ -10,8 +10,8 @@ dependencies:
   - cachetools=4.2.2
   - boto3
   - pip
-  - matplotlib
-  - numpy
   - pip:
     - streamlit==1.21.0
+    - numpy
+    - matplotlib
  
