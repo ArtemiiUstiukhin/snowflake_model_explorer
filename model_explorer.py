@@ -2,21 +2,19 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from snowflake.snowpark.session import Session
 from snowflake.snowpark.functions import col, call_udf
 from sklearn import metrics
 import json
-import os
 
 st.set_page_config(
-     page_title="Snowflake Model Explorer",
-     page_icon="❄️",
-     layout="wide",
-     initial_sidebar_state="expanded",
-     menu_items={
-         'Get Help': 'https://developers.snowflake.com',
-         'About': "This is an *extremely* cool app powered by Snowpark for Python, Streamlit, and Snowflake Data Marketplace"
-     }
+    page_title="Snowflake Model Explorer",
+    page_icon="❄️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://developers.snowflake.com',
+        'About': "This is an *extremely* cool app powered by Snowpark for Python, Streamlit, and Snowflake Data Marketplace"
+    }
 )
 
 ### Create SnowFlake Session object
@@ -286,6 +284,7 @@ session = create_session_object()
 # Get Trained Models list 
 models_raw = session.sql('LIST @DASH_MODELS').collect()
 models_names = {model.name.replace("dash_models/", "").split(".", 1)[0] : model.name.replace("dash_models/", "") for model in models_raw}
+models_sizes = {model.name.replace("dash_models/", "").split(".", 1)[0] : model.size for model in models_raw}
 print("Models names:")
 print(models_names)
 
@@ -295,8 +294,14 @@ st.sidebar.title("Visualize Model")
 model_name = st.sidebar.selectbox("Choose a Model", models_names.keys())
 model_name_full = models_names[model_name]
 
-st.sidebar.title("Available Models")
-st.sidebar.dataframe({ "Name" : models_names.keys(), "Size" : [model.size for model in models_raw] })
+regression_models = dict(filter(lambda item: "Regression" in item[0], models_names.items()))
+classification_models = dict(filter(lambda item: "Regression" not in item[0], models_names.items()))
+
+st.sidebar.title("Regression Problem Models :chart increasing:")
+st.sidebar.dataframe({ "Name" : regression_models.keys(), "Size" : [models_sizes[model] for model in regression_models.keys()] })
+
+st.sidebar.title("Classification Problem Models :bar chart:")
+st.sidebar.dataframe({ "Name" : classification_models.keys(), "Size" : [models_sizes[model] for model in classification_models.keys()] })
 
 # Model explorer tab
 
