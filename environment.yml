@@ -12,6 +12,4 @@ dependencies:
   - pip
   - pip:
     - streamlit==1.21.0
-    - numpy
-    - matplotlib
  
