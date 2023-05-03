@@ -11,5 +11,7 @@ dependencies:
   - boto3
   - pip
   - pip:
-    - streamlit==1.21.0
+    - streamlit==1.22.0
+    - numpy==1.23.5
+    - matplotlib==3.7.1
  
