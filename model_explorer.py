@@ -394,7 +394,7 @@ while len(models_names) == 0:
             models_names, models_sizes = get_models_list_from_snowflake()
 
 # Sidebar
-st.sidebar.title("Visualize Model")
+st.sidebar.title("Visualize Model :eyes:")
 
 model_name = st.sidebar.selectbox("Choose a Model", models_names.keys())
 model_name_full = models_names[model_name]
@@ -410,7 +410,7 @@ st.sidebar.dataframe({ "Name" : classification_models.keys(), "Size" : [models_s
 
 # Model explorer tab
 
-st.header("Welcome to SnowFlake Models PlayGround ≈@_@≈")
+st.header("Welcome to SnowFlake Models Explorer ≈@_@≈")
 
 model_data_received = get_model_data(session, model_name, model_name_full)
 
@@ -420,7 +420,7 @@ with model_explorer_tab:
     model_column, params_column = st.columns([4, 2])
 
     with model_column:
-        model_column.subheader("Explore Model Entrails")
+        model_column.subheader("Explore Model Coefficients and Structure")
         display_model(model_data_received, model_name, model_column)
 
     with params_column:
@@ -462,5 +462,5 @@ with model_comparator_tab:
                 column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2))
                 display_training_report_class(model_name_2, column_model_2)
             elif "Regression" in model_name_2:
-                column_model_2.subheader("{0} model metrics".format(model_name_1))
+                column_model_2.subheader("{0} model metrics".format(model_name_2))
                 display_training_report_regression(model_name_2, column_model_2, model_results)
