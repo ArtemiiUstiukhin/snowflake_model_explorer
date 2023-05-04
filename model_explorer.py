@@ -74,6 +74,8 @@ def get_model_data(session, model_name, model_name_full):
 def display_model_name(model_name, parent=st):
     if model_name == "SimpleLinearRegression":
         parent.title("Simple Linear Regression Model")
+    elif model_name == "GradientBoostingRegression":
+        parent.title("Gradient Boosting Regression Model")
     elif model_name == "ComplexLinearRegression":
         parent.title("Polynomial Linear Regression Model")
     elif model_name == "LinearSVC":
@@ -86,6 +88,8 @@ def display_model(model_data_received, model_name, parent=st):
         model_data = st.session_state.models_data[model_name]
 
         if model_name == "SimpleLinearRegression":
+            display_simple_linear_regression_model(model_data, parent)
+        elif model_name == "GradientBoostingRegression":
             display_simple_linear_regression_model(model_data, parent)
         elif model_name == "ComplexLinearRegression":
             display_linear_regression_model(model_data, parent)
@@ -190,7 +194,7 @@ def get_model_predictions(session, model_name, model_name_full, test_size):
     # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
 
     if model_name not in st.session_state.models_predictions:
-        if model_name == "SimpleLinearRegression" or model_name == "ComplexLinearRegression":
+        if "Regression" in model_name:
             try:
                 model_predictions = session.call('get_regression_model_prediction', model_name_full, test_size)
                 json_predictions = json.loads(model_predictions)
@@ -307,18 +311,27 @@ def display_training_report_regression(model_name, parent, compare_values = None
     return { "r2": r2, "mae": mae, "medae": medae, "d2": d2, "ev": ev, "mpl":mpl }
 
 def retrain_model(session, model_name, params):
-    if model_name == "SimpleLinearRegression":
-        session.call('train_model_simple_linear_regression', model_name, params["test_size"])
-    elif model_name == "ComplexLinearRegression":
-        session.call('train_model_complex_linear_regression', model_name, params["test_size"], params["folds"])
-    elif model_name == "LinearSVC":
-        session.call('train_iris_prediction_model', model_name, params["test_size"])
-    elif model_name == "DecisionTree":
-        session.call('train_iris_prediction_model', model_name, params["test_size"])
+    try:
+        if model_name == "SimpleLinearRegression":
+            session.call('train_model_simple_linear_regression', model_name, params["test_size"])
+        if model_name == "GradientBoostingRegression":
+            session.call('train_model_gradient_boosting_regression', model_name, params["test_size"], 0.1, 100, 'squared_error')
+        elif model_name == "ComplexLinearRegression":
+            session.call('train_model_complex_linear_regression', model_name, params["test_size"], params["folds"])
+        elif model_name == "LinearSVC":
+            session.call('train_iris_prediction_model', model_name, params["test_size"])
+        elif model_name == "DecisionTree":
+            session.call('train_iris_prediction_model', model_name, params["test_size"])
+    except Exception as e:
+        print("Error on retraining model {0}".format(model_name))
+        print("Error:")
+        print(str(e))
 
 def display_model_params_selector(model_name, parent=st):
     train_size = st.slider('Train split size', min_value=0.1, max_value=0.9, value=0.5, step=0.1)
     if model_name == "SimpleLinearRegression":
+        return { "test_size": 1 - train_size }
+    elif model_name == "GradientBoostingRegression":
         return { "test_size": 1 - train_size }
     elif model_name == "ComplexLinearRegression":
         number_of_folds = st.slider('Number of folds for cross-validation', 1, 30, 10)
@@ -421,7 +434,7 @@ with model_comparator_tab:
             if model_name_1 == "LinearSVC" or model_name_1 == "DecisionTree":
                 column_model_1.subheader("Confusion matrix for {0} model".format(model_name_1))
                 display_training_report_class(model_name_1, column_model_1)
-            elif model_name_1 == "SimpleLinearRegression" or model_name_1 == "ComplexLinearRegression":
+            elif "Regression" in model_name_1:
                 column_model_1.subheader("{0} model metrics".format(model_name_1))
                 model_results = display_training_report_regression(model_name_1, column_model_1)
 
@@ -435,6 +448,6 @@ with model_comparator_tab:
             if model_name_2 == "LinearSVC" or model_name_2 == "DecisionTree":
                 column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2))
                 display_training_report_class(model_name_2, column_model_2)
-            elif model_name_2 == "SimpleLinearRegression" or model_name_2 == "ComplexLinearRegression":
+            elif "Regression" in model_name_2:
                 column_model_2.subheader("{0} model metrics".format(model_name_1))
                 display_training_report_regression(model_name_2, column_model_2, model_results)
