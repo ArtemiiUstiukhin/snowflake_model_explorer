@@ -319,9 +319,9 @@ def retrain_model(session, model_name, params):
         elif model_name == "ComplexLinearRegression":
             session.call('train_model_complex_linear_regression', model_name, params["test_size"], params["folds"])
         elif model_name == "LinearSVC":
-            session.call('train_iris_prediction_model', model_name, params["test_size"])
+            session.call('train_iris_prediction_model', model_name, params["test_size"], "-", "-", params["lsvc_loss"], params["lsvc_c"])
         elif model_name == "DecisionTree":
-            session.call('train_iris_prediction_model', model_name, params["test_size"])
+            session.call('train_iris_prediction_model', model_name, params["test_size"], params["tree_criterion"], params["tree_splitter"], "-", 1.0)
     except Exception as e:
         print("Error on retraining model {0}".format(model_name))
         print("Error:")
@@ -340,9 +340,13 @@ def display_model_params_selector(model_name, parent=st):
         number_of_folds = parent.slider('Number of folds for cross-validation', 1, 30, 10)
         return { "test_size": 1 - train_size, "folds": number_of_folds }
     elif model_name == "LinearSVC":
-        return { "test_size": 1 - train_size }
+        lsvc_loss = parent.radio("Loss function to be optimized", ('squared_hinge', 'hinge'), horizontal=True)
+        lsvc_c = parent.slider("C (regularization parameter)", min_value=1.0, max_value=10.0, value=1.0, step=1.0)
+        return { "test_size": 1 - train_size, "lsvc_loss": lsvc_loss, "lsvc_c": lsvc_c }
     elif model_name == "DecisionTree":
-        return { "test_size": 1 - train_size }
+        tree_criterion = parent.radio("The function to measure the quality of a split", ('gini', 'entropy', 'log_loss'), horizontal=True)
+        tree_splitter = parent.radio("The strategy used to choose the split at each node", ('best', 'random'), horizontal=True)
+        return { "test_size": 1 - train_size, "tree_criterion": tree_criterion, "tree_splitter": tree_splitter }
 
 def retrain_model_button(snowflake_session, model_name, train_params):
     st.session_state.model_retraining_count += 1
