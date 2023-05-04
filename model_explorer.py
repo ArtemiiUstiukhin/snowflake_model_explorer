@@ -12,8 +12,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'Get Help': 'https://developers.snowflake.com',
-        'About': "This is an *extremely* cool app powered by Snowpark for Python, Streamlit, and Snowflake Data Marketplace"
+        'Get Help': 'https://www.linkedin.com/in/artemii-ustiukhin',
+        'About': "From :flag-fi: with love!"
     }
 )
 
@@ -45,16 +45,29 @@ def describePowers(feeature_names, raw_powers):
 
 ### Get Model Parameters
 
-def get_model_data(session, model_name):
-    session.clear_imports()
-    session.clear_packages()
-    session.add_import('@dash_models/{0}'.format(model_name))
-    session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
+def get_model_data(session, model_name, model_name_full):
+    # session.clear_imports()
+    # session.clear_packages()
+    # session.add_import('@dash_models/{0}'.format(model_name_full))
+    # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
 
-    df = session.create_dataframe([model_name], schema=["Model Name"])
-    data = df.select(call_udf("get_model", col("Model Name")).as_("UDF"))
-    model_data = json.loads(data.collect()[0][0])
-    return model_data
+    if model_name not in st.session_state.models_data:
+        try:
+            df = session.create_dataframe([model_name_full], schema=["Model Name"])
+            data = df.select(call_udf("get_model", col("Model Name")).as_("UDF")).collect()
+            if not data == None and len(data) > 0 and len(data[0]) > 0:
+                model_data = json.loads(data[0][0])
+                st.session_state.models_data[model_name] = model_data
+                print("Updated st.session_state:")
+                print(st.session_state)
+                return True
+        except Exception as e:
+            print("Error on getting model data for {0}".format(model_name))
+            print("Error:")
+            print(str(e))
+            return False
+
+    return model_name in st.session_state.models_data
 
 ### Display Model Functions
 
@@ -68,15 +81,18 @@ def display_model_name(model_name, parent=st):
     elif model_name == "DecisionTree":
         parent.title("Decision Tree Model")
 
-def display_model(model_data, model_name, parent=st):
-    if model_name == "SimpleLinearRegression":
-        display_simple_linear_regression_model(model_data, parent)
-    elif model_name == "ComplexLinearRegression":
-        display_linear_regression_model(model_data, parent)
-    elif model_name == "LinearSVC":
-        display_svc_model(model_data, parent)
-    elif model_name == "DecisionTree":
-        display_desicion_tree_model(model_data, parent)
+def display_model(model_data_received, model_name, parent=st):
+    if model_data_received:
+        model_data = st.session_state.models_data[model_name]
+
+        if model_name == "SimpleLinearRegression":
+            display_simple_linear_regression_model(model_data, parent)
+        elif model_name == "ComplexLinearRegression":
+            display_linear_regression_model(model_data, parent)
+        elif model_name == "LinearSVC":
+            display_svc_model(model_data, parent)
+        elif model_name == "DecisionTree":
+            display_desicion_tree_model(model_data, parent)
 
 def display_simple_linear_regression_model(model_data, parent=st):
     # st.dataframe(model_data)
@@ -166,19 +182,63 @@ def display_svc_model(model_data, parent=st):
 
 ### Get Model Predictions
 
-def get_class_model_prediction(session, model_name, test_size):
-    session.clear_imports()
-    session.clear_packages()
-    session.add_import('@dash_models/{0}'.format(model_name))
-    session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
 
-    df = session.create_dataframe([[model_name, test_size]], schema=["Model Name", "Test Size"])
-    data = df.select(call_udf("get_class_model_prediction", col("Model Name"), col("Test Size")).as_("UDF"))
-    predictions = json.loads(data.collect()[0][0])
-    return predictions
+def get_model_predictions(session, model_name, model_name_full, test_size):
+    # session.clear_imports()
+    # session.clear_packages()
+    # session.add_import('@dash_models/{0}'.format(model_name_full))
+    # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
+
+    if model_name not in st.session_state.models_predictions:
+        if model_name == "SimpleLinearRegression" or model_name == "ComplexLinearRegression":
+            try:
+                model_predictions = session.call('get_regression_model_prediction', model_name_full, test_size)
+                json_predictions = json.loads(model_predictions)
+                if not json_predictions == None:
+                    st.session_state.models_predictions[model_name] = json_predictions
+                    print("Updated st.session_state.models_predictions:")
+                    print(st.session_state.models_predictions)
+                    return True
+            except Exception as e:
+                print("Error on getting predictions for {0}".format(model_name))
+                print("Error:")
+                print(str(e))
+                return False
+        elif model_name == "LinearSVC" or model_name == "DecisionTree":
+            try:
+                df = session.create_dataframe([[model_name_full, test_size]], schema=["Model Name", "Test Size"])
+                data = df.select(call_udf("get_class_model_prediction", col("Model Name"), col("Test Size")).as_("UDF")).collect()
+                if not data == None and len(data) > 0 and len(data[0]) > 0:
+                    json_predictions = json.loads(data[0][0])
+                    st.session_state.models_predictions[model_name] = json_predictions
+                    print("Updated st.session_state.models_predictions:")
+                    print(st.session_state.models_predictions)
+                    return True
+            except Exception as e:
+                print("Error on getting predictions for {0}".format(model_name))
+                print("Error:")
+                print(str(e))
+                return False
+
+    return model_name in st.session_state.models_predictions
+
+# def get_class_model_prediction(session, model_name, test_size):
+#     # session.clear_imports()
+#     # session.clear_packages()
+#     # session.add_import('@dash_models/{0}'.format(model_name))
+#     # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
+
+#     df = session.create_dataframe([[model_name, test_size]], schema=["Model Name", "Test Size"])
+#     data = df.select(call_udf("get_class_model_prediction", col("Model Name"), col("Test Size")).as_("UDF"))
+#     predictions = json.loads(data.collect()[0][0])
+#     return predictions
 
 def display_training_report_class(model_name, parent):
-    model_prediction = get_class_model_prediction(session, model_name, 0.1)
+    # model_prediction = get_class_model_prediction(session, model_name, 0.1)
+    if not "models_predictions" in st.session_state or not model_name in st.session_state["models_predictions"]:
+        return
+    
+    model_prediction = st.session_state.models_predictions[model_name]
     y_test = model_prediction["Test_target"]
     predicted = model_prediction["Predicted_target"]
 
@@ -205,11 +265,15 @@ def display_training_report_class(model_name, parent):
     parent.dataframe(avg_report_frame)
 
 def display_training_report_regression(model_name, parent, compare_values = None):
-    model_predictions = session.call('get_regression_model_prediction', model_name, 0.3)
-    json_predictions = json.loads(model_predictions)
+    # model_predictions = session.call('get_regression_model_prediction', model_name, 0.2)
 
-    y_true = np.array(json_predictions["Test_target"])
-    y_pred = np.array(json_predictions["Predicted_target"])
+    if not "models_predictions" in st.session_state or not model_name in st.session_state["models_predictions"]:
+        return
+    
+    model_prediction = st.session_state.models_predictions[model_name]
+
+    y_true = np.array(model_prediction["Test_target"])
+    y_pred = np.array(model_prediction["Predicted_target"])
 
     col1, col2, col3 = parent.columns([1, 1, 1])
 
@@ -234,7 +298,7 @@ def display_training_report_regression(model_name, parent, compare_values = None
     mpl = metrics.mean_pinball_loss(y_true, y_pred)
     col3.metric(label="Mean pinball loss", value="{:.2f}".format(mpl), delta=None if compare_values == None else "{:.4f}".format(mpl - compare_values["mpl"]))
 
-    parent.subheader("Cross-valudated predictions")
+    parent.subheader("Cross-validated predictions")
 
     display = metrics.PredictionErrorDisplay.from_predictions(y_true=y_true, y_pred=y_pred)
     display.plot()
@@ -267,14 +331,26 @@ def display_model_params_selector(model_name, parent=st):
 def retrain_model_button(snowflake_session, model_name, train_params):
     st.session_state.model_retraining_count += 1
 
-    if st.session_state.model_retraining_count > 2:
-        st.error("Too many model retraining attempts per session. Limit is 2.")
+    if st.session_state.model_retraining_count > 5:
+        st.error("Too many model retraining attempts per session. Limit is 5.")
         return
 
     retrain_model(snowflake_session, model_name, train_params)
 
+    # Remove old model data from state
+    if model_name in st.session_state.models_data:
+        st.session_state.models_data.pop(model_name)
+    if model_name in st.session_state.models_predictions:
+        st.session_state.models_predictions.pop(model_name)
+
 if 'model_retraining_count' not in st.session_state:
     st.session_state.model_retraining_count = 0
+
+if 'models_data' not in st.session_state:
+    st.session_state["models_data"] = { "Model_data_object": "Model_data_value" }
+
+if 'models_predictions' not in st.session_state:
+    st.session_state["models_predictions"] = { "Model_prediction_object": "Model_prediction_value" }
 
 ### Main body
 
@@ -288,6 +364,9 @@ models_sizes = {model.name.replace("dash_models/", "").split(".", 1)[0] : model.
 print("Models names:")
 print(models_names)
 
+if len(models_names) == 0:
+    st.error("No models found in SnowFlake")
+
 # Sidebar
 st.sidebar.title("Visualize Model")
 
@@ -297,32 +376,32 @@ model_name_full = models_names[model_name]
 regression_models = dict(filter(lambda item: "Regression" in item[0], models_names.items()))
 classification_models = dict(filter(lambda item: "Regression" not in item[0], models_names.items()))
 
-st.sidebar.title("Regression Problem Models :chart increasing:")
+st.sidebar.title("Regression Problem Models :chart_with_upwards_trend:")
 st.sidebar.dataframe({ "Name" : regression_models.keys(), "Size" : [models_sizes[model] for model in regression_models.keys()] })
 
-st.sidebar.title("Classification Problem Models :bar chart:")
+st.sidebar.title("Classification Problem Models :bar_chart:")
 st.sidebar.dataframe({ "Name" : classification_models.keys(), "Size" : [models_sizes[model] for model in classification_models.keys()] })
 
 # Model explorer tab
 
-st.header("Welcome to the SnowFlake Models PlayGround!")
+st.header("Welcome to SnowFlake Models PlayGround ≈@_@≈")
 
-model_data = get_model_data(session, model_name_full)
+model_data_received = get_model_data(session, model_name, model_name_full)
 
-model_explorer_tab, model_comparator_tab = st.tabs(["Model Explorer", "Model Comparator"])
+model_explorer_tab, model_comparator_tab = st.tabs(["Model Explorer :open_book:", "Model Comparator :scales:"])
 
 with model_explorer_tab:
     model_column, params_column = st.columns([4, 2])
 
     with model_column:
         model_column.subheader("Explore Model Entrails")
-        display_model(model_data, model_name, model_column)
+        display_model(model_data_received, model_name, model_column)
 
     with params_column:
         params_column.subheader("Play with Model Parameters")
         train_params = display_model_params_selector(model_name, params_column)
 
-        retrain = params_column.button("Retrain", on_click=retrain_model_button, args=(session, model_name, train_params, ))
+        params_column.button("Retrain", on_click=retrain_model_button, args=(session, model_name, train_params, ))
         # if retrain and not model_name == "":
         #     with st.spinner("Retraining the model..."):
         #         retrain_model(session, model_name, train_params)
@@ -331,25 +410,31 @@ with model_explorer_tab:
 # Model comparator tab
 
 with model_comparator_tab:
-    model_comparator_tab.subheader("Compare Models Performance!")
+    model_comparator_tab.subheader("Compare Models Performance")
     column_model_1, _, column_model_2 = st.columns([4, 1, 4])
 
     with column_model_1:
         model_name_1 = column_model_1.selectbox("Choose a model to compare", models_names.keys())
-        if model_name_1:
-            column_model_1.subheader("Confusion matrix for {0} model".format(model_name_1))
-            model_name_full_1 = models_names[model_name_1]
+        model_name_full_1 = models_names[model_name_1]
+        model_1_received_predictions = get_model_predictions(session, model_name_1, model_name_full_1, 0.2)
+        if model_name_1 and model_1_received_predictions:
             if model_name_1 == "LinearSVC" or model_name_1 == "DecisionTree":
-                display_training_report_class(model_name_full_1, column_model_1)
+                column_model_1.subheader("Confusion matrix for {0} model".format(model_name_1))
+                display_training_report_class(model_name_1, column_model_1)
             elif model_name_1 == "SimpleLinearRegression" or model_name_1 == "ComplexLinearRegression":
-                model_results = display_training_report_regression(model_name_full_1, column_model_1)
+                column_model_1.subheader("{0} model metrics".format(model_name_1))
+                model_results = display_training_report_regression(model_name_1, column_model_1)
 
     with column_model_2:
-        model_name_2 = column_model_2.selectbox("Choose another model to compare", models_names.keys())
-        if model_name_2:
-            column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2 ))
-            model_name_full_2 = models_names[model_name_2]
+        model_names_2 = list(regression_models.keys()) if model_name_1 in regression_models else list(classification_models.keys())
+        model_names_2.remove(model_name_1)
+        model_name_2 = column_model_2.selectbox("Choose another model to compare", model_names_2)
+        model_name_full_2 = models_names[model_name_2]
+        model_2_received_predictions = get_model_predictions(session, model_name_2, model_name_full_2, 0.2)
+        if model_name_2 and model_2_received_predictions:
             if model_name_2 == "LinearSVC" or model_name_2 == "DecisionTree":
-                display_training_report_class(model_name_full_2, column_model_2)
-            elif model_name_1 == "SimpleLinearRegression" or model_name_1 == "ComplexLinearRegression":
-                display_training_report_regression(model_name_full_2, column_model_2, model_results)
+                column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2))
+                display_training_report_class(model_name_2, column_model_2)
+            elif model_name_2 == "SimpleLinearRegression" or model_name_2 == "ComplexLinearRegression":
+                column_model_2.subheader("{0} model metrics".format(model_name_1))
+                display_training_report_regression(model_name_2, column_model_2, model_results)
