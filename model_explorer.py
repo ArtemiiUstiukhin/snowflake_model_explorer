@@ -315,7 +315,7 @@ def retrain_model(session, model_name, params):
         if model_name == "SimpleLinearRegression":
             session.call('train_model_simple_linear_regression', model_name, params["test_size"])
         if model_name == "GradientBoostingRegression":
-            session.call('train_model_gradient_boosting_regression', model_name, params["test_size"], 0.1, 100, 'squared_error')
+            session.call('train_model_gradient_boosting_regression', model_name, params["test_size"], params["learning_rate"], params["n_estimators"], params["loss"])
         elif model_name == "ComplexLinearRegression":
             session.call('train_model_complex_linear_regression', model_name, params["test_size"], params["folds"])
         elif model_name == "LinearSVC":
@@ -328,13 +328,16 @@ def retrain_model(session, model_name, params):
         print(str(e))
 
 def display_model_params_selector(model_name, parent=st):
-    train_size = st.slider('Train split size', min_value=0.1, max_value=0.9, value=0.5, step=0.1)
+    train_size = parent.slider('Train split size', min_value=0.1, max_value=0.9, value=0.5, step=0.1)
     if model_name == "SimpleLinearRegression":
         return { "test_size": 1 - train_size }
     elif model_name == "GradientBoostingRegression":
-        return { "test_size": 1 - train_size }
+        learning_rate = parent.slider('Learning rate', min_value=0.0, max_value=1.0, value=0.1, step=0.1)
+        n_estimators = parent.slider('The number of boosting stages', min_value=1, max_value=100, value=100, step=10)
+        loss = parent.radio("Loss function to be optimized", ('squared_error', 'absolute_error', 'huber', 'quantile'), horizontal=True)
+        return { "test_size": 1 - train_size, "learning_rate": learning_rate, "n_estimators": n_estimators, "loss": loss }
     elif model_name == "ComplexLinearRegression":
-        number_of_folds = st.slider('Number of folds for cross-validation', 1, 30, 10)
+        number_of_folds = parent.slider('Number of folds for cross-validation', 1, 30, 10)
         return { "test_size": 1 - train_size, "folds": number_of_folds }
     elif model_name == "LinearSVC":
         return { "test_size": 1 - train_size }
