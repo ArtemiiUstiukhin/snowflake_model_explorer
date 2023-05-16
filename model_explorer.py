@@ -46,11 +46,6 @@ def describePowers(feeature_names, raw_powers):
 ### Get Model Parameters
 
 def get_model_data(session, model_name, model_name_full):
-    # session.clear_imports()
-    # session.clear_packages()
-    # session.add_import('@dash_models/{0}'.format(model_name_full))
-    # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
-
     if model_name not in st.session_state.models_data:
         try:
             df = session.create_dataframe([model_name_full], schema=["Model Name"])
@@ -186,13 +181,7 @@ def display_svc_model(model_data, parent=st):
 
 ### Get Model Predictions
 
-
 def get_model_predictions(session, model_name, model_name_full, test_size):
-    # session.clear_imports()
-    # session.clear_packages()
-    # session.add_import('@dash_models/{0}'.format(model_name_full))
-    # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
-
     if model_name not in st.session_state.models_predictions:
         if "Regression" in model_name:
             try:
@@ -226,16 +215,6 @@ def get_model_predictions(session, model_name, model_name_full, test_size):
 
     return model_name in st.session_state.models_predictions
 
-# def get_class_model_prediction(session, model_name, test_size):
-#     # session.clear_imports()
-#     # session.clear_packages()
-#     # session.add_import('@dash_models/{0}'.format(model_name))
-#     # session.add_packages('pandas','joblib','scikit-learn==1.1.1', 'numpy')
-
-#     df = session.create_dataframe([[model_name, test_size]], schema=["Model Name", "Test Size"])
-#     data = df.select(call_udf("get_class_model_prediction", col("Model Name"), col("Test Size")).as_("UDF"))
-#     predictions = json.loads(data.collect()[0][0])
-#     return predictions
 
 def display_training_report_class(model_name, parent):
     # model_prediction = get_class_model_prediction(session, model_name, 0.1)
@@ -371,6 +350,8 @@ def get_models_list_from_snowflake():
     print(models_names)
     return models_names, models_sizes
 
+### Setup state
+
 if 'model_retraining_count' not in st.session_state:
     st.session_state.model_retraining_count = 0
 
@@ -380,87 +361,104 @@ if 'models_data' not in st.session_state:
 if 'models_predictions' not in st.session_state:
     st.session_state["models_predictions"] = { "Model_prediction_object": "Model_prediction_value" }
 
-### Main body
+if 'init_load_models' not in st.session_state:
+    st.session_state["init_load_models"] = False
 
-# Create SnowFlake Session
-session = create_session_object()
-
-
-# Get Trained Models list 
-models_names, models_sizes = get_models_list_from_snowflake()
-
-while len(models_names) == 0:
-    with st.spinner('Extracting models from SnowFlake...'):
-            models_names, models_sizes = get_models_list_from_snowflake()
-
-# Sidebar
-st.sidebar.title("Visualize Model :eyes:")
-
-model_name = st.sidebar.selectbox("Choose a Model", models_names.keys())
-model_name_full = models_names[model_name]
-
-regression_models = dict(filter(lambda item: "Regression" in item[0], models_names.items()))
-classification_models = dict(filter(lambda item: "Regression" not in item[0], models_names.items()))
-
-st.sidebar.title("Regression Problem Models :chart_with_upwards_trend:")
-st.sidebar.dataframe({ "Name" : regression_models.keys(), "Size" : [models_sizes[model] for model in regression_models.keys()] })
-
-st.sidebar.title("Classification Problem Models :bar_chart:")
-st.sidebar.dataframe({ "Name" : classification_models.keys(), "Size" : [models_sizes[model] for model in classification_models.keys()] })
-
-# Model explorer tab
+### Provide an explanation of how the app works
 
 st.header("Welcome to SnowFlake Models Explorer ≈@_@≈")
 
-model_data_received = get_model_data(session, model_name, model_name_full)
+st.write("This app allows to Explore, Analyse, Train and Compare ML models stored in Snowflake using Python Snowpark.")
+st.write("To demonstrate the functionality of the app two types of ML models (Regression and Classification models) were pre-trained using publicly available datasets from [Snowflake](https://quickstarts.snowflake.com/guide/getting_started_with_dataengineering_ml_using_snowpark_python/index.html#1) and [scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html#sklearn.datasets.load_iris) respectively.")
+st.write(":point_down: Press the button bellow to load models using Python Snowpark UDF.")
 
-model_explorer_tab, model_comparator_tab = st.tabs(["Model Explorer :open_book:", "Model Comparator :scales:"])
+load_models = st.button("Load ML models from Snowflake")
+if load_models:
+    st.session_state["init_load_models"] = True
 
-with model_explorer_tab:
-    model_column, params_column = st.columns([4, 2])
+if st.session_state["init_load_models"]:
+    ### Main body
 
-    with model_column:
-        model_column.subheader("Explore Model Coefficients and Structure")
-        display_model(model_data_received, model_name, model_column)
+    # Create SnowFlake Session
+    session = create_session_object()
 
-    with params_column:
-        params_column.subheader("Play with Model Parameters")
-        train_params = display_model_params_selector(model_name, params_column)
+    # Get Trained Models list 
+    models_names, models_sizes = get_models_list_from_snowflake()
 
-        params_column.button("Retrain", on_click=retrain_model_button, args=(session, model_name, train_params, ))
-        # if retrain and not model_name == "":
-        #     with st.spinner("Retraining the model..."):
-        #         retrain_model(session, model_name, train_params)
-                # display_model(model_data, model_name, model_column)
+    while len(models_names) == 0:
+        with st.spinner('Extracting models from SnowFlake...'):
+                models_names, models_sizes = get_models_list_from_snowflake()
 
-# Model comparator tab
+    # Sidebar
+    st.sidebar.title("Visualize Model :eyes:")
 
-with model_comparator_tab:
-    model_comparator_tab.subheader("Compare Models Performance")
-    column_model_1, _, column_model_2 = st.columns([4, 1, 4])
+    blank_space = ""
+    model_name = st.sidebar.selectbox("Choose a Model", [blank_space] + list(models_names.keys()))
+    if not model_name == blank_space:
+        model_name_full = models_names[model_name]
+        model_data_received = get_model_data(session, model_name, model_name_full)
 
-    with column_model_1:
-        model_name_1 = column_model_1.selectbox("Choose a model to compare", models_names.keys())
-        model_name_full_1 = models_names[model_name_1]
-        model_1_received_predictions = get_model_predictions(session, model_name_1, model_name_full_1, 0.2)
-        if model_name_1 and model_1_received_predictions:
-            if model_name_1 == "LinearSVC" or model_name_1 == "DecisionTree":
-                column_model_1.subheader("Confusion matrix for {0} model".format(model_name_1))
-                display_training_report_class(model_name_1, column_model_1)
-            elif "Regression" in model_name_1:
-                column_model_1.subheader("{0} model metrics".format(model_name_1))
-                model_results = display_training_report_regression(model_name_1, column_model_1)
+    regression_models = dict(filter(lambda item: "Regression" in item[0], models_names.items()))
+    classification_models = dict(filter(lambda item: "Regression" not in item[0], models_names.items()))
 
-    with column_model_2:
-        model_names_2 = list(regression_models.keys()) if model_name_1 in regression_models else list(classification_models.keys())
-        model_names_2.remove(model_name_1)
-        model_name_2 = column_model_2.selectbox("Choose another model to compare", model_names_2)
-        model_name_full_2 = models_names[model_name_2]
-        model_2_received_predictions = get_model_predictions(session, model_name_2, model_name_full_2, 0.2)
-        if model_name_2 and model_2_received_predictions:
-            if model_name_2 == "LinearSVC" or model_name_2 == "DecisionTree":
-                column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2))
-                display_training_report_class(model_name_2, column_model_2)
-            elif "Regression" in model_name_2:
-                column_model_2.subheader("{0} model metrics".format(model_name_2))
-                display_training_report_regression(model_name_2, column_model_2, model_results)
+    st.sidebar.title("Regression Problem Models :chart_with_upwards_trend:")
+    st.sidebar.dataframe({ "Name" : regression_models.keys(), "Size" : [models_sizes[model] for model in regression_models.keys()] })
+
+    st.sidebar.title("Classification Problem Models :bar_chart:")
+    st.sidebar.dataframe({ "Name" : classification_models.keys(), "Size" : [models_sizes[model] for model in classification_models.keys()] })
+
+    # Tabs definition
+
+    st.write(":open_book: Model Explorer tab allows you to explore model parameters and structure, as well as tune model training parameters and retrain the model.")
+    st.write(":scales: Model Comparator tab allows you to compare models within the same model type using model metrics and scoring, quantifying the quality of the model predictions.")
+
+    model_explorer_tab, model_comparator_tab = st.tabs(["Model Explorer :open_book:", "Model Comparator :scales:"])
+
+    # Model explorer tab
+
+    with model_explorer_tab:
+        model_explorer_tab.write(":point_left: Choose a model in the top-left corner to start.")
+        model_column, params_column = st.columns([4, 2])
+
+        with model_column:
+            model_column.subheader("Explore Model Coefficients and Structure")
+            if not model_name == blank_space:
+                display_model(model_data_received, model_name, model_column)
+
+        with params_column:
+            params_column.subheader("Play with Model Parameters")
+            if not model_name == blank_space:
+                train_params = display_model_params_selector(model_name, params_column)
+                params_column.button("Retrain Model", on_click=retrain_model_button, args=(session, model_name, train_params, ))
+
+    # Model comparator tab
+
+    with model_comparator_tab:
+        model_comparator_tab.subheader("Compare Models Performance")
+        column_model_1, _, column_model_2 = st.columns([4, 1, 4])
+
+        with column_model_1:
+            model_name_1 = column_model_1.selectbox(":point_down: Choose a model to compare", models_names.keys())
+            model_name_full_1 = models_names[model_name_1]
+            model_1_received_predictions = get_model_predictions(session, model_name_1, model_name_full_1, 0.2)
+            if model_name_1 and model_1_received_predictions:
+                if model_name_1 == "LinearSVC" or model_name_1 == "DecisionTree":
+                    column_model_1.subheader("Confusion matrix for {0} model".format(model_name_1))
+                    display_training_report_class(model_name_1, column_model_1)
+                elif "Regression" in model_name_1:
+                    column_model_1.subheader("{0} model metrics".format(model_name_1))
+                    model_results = display_training_report_regression(model_name_1, column_model_1)
+
+        with column_model_2:
+            model_names_2 = list(regression_models.keys()) if model_name_1 in regression_models else list(classification_models.keys())
+            model_names_2.remove(model_name_1)
+            model_name_2 = column_model_2.selectbox(":point_down: Choose another model to compare", model_names_2)
+            model_name_full_2 = models_names[model_name_2]
+            model_2_received_predictions = get_model_predictions(session, model_name_2, model_name_full_2, 0.2)
+            if model_name_2 and model_2_received_predictions:
+                if model_name_2 == "LinearSVC" or model_name_2 == "DecisionTree":
+                    column_model_2.subheader("Confusion matrix for {0} model".format(model_name_2))
+                    display_training_report_class(model_name_2, column_model_2)
+                elif "Regression" in model_name_2:
+                    column_model_2.subheader("{0} model metrics".format(model_name_2))
+                    display_training_report_regression(model_name_2, column_model_2, model_results)
