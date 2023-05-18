@@ -409,8 +409,8 @@ if st.session_state["init_load_models"]:
 
     # Tabs definition
 
-    st.write(":open_book: Model Explorer tab allows you to explore model parameters and structure, as well as tune model training parameters and retrain the model.")
-    st.write(":scales: Model Comparator tab allows you to compare models within the same model type using model metrics and scoring, quantifying the quality of the model predictions.")
+    st.write(":open_book: Model Explorer tab allows you to explore model coefficients and structure, as well as tune model training parameters and retrain the model using [Python Snowpark Stored Procedures](https://github.com/ArtemiiUstiukhin/snowflake_model_explorer/blob/explainability/Snowpark_Model_Training.ipynb).")
+    st.write(":scales: Model Comparator tab allows you to compare models within the same model type using model metrics and scoring, quantifying the quality of the model predictions using [Python Snowpark UDF](https://github.com/ArtemiiUstiukhin/snowflake_model_explorer/blob/explainability/Snowpark_Model_Training.ipynb).")
 
     model_explorer_tab, model_comparator_tab = st.tabs(["Model Explorer :open_book:", "Model Comparator :scales:"])
 
